@@ -1,0 +1,70 @@
+version: 2.1
+
+executors:
+  go-executor:
+    docker:
+      - image: circleci/golang:1.20
+
+jobs:
+  build-user-service:
+    executor: go-executor
+    steps:
+      - checkout:
+          path: ./user-service
+      - run:
+          name: Build User Service
+          command: |
+            cd user-service
+            go build -o main .
+      - setup_remote_docker
+      - run:
+          name: Build Docker Image
+          command: |
+            cd user-service
+            docker build -t vksssd/user-service:$CIRCLE_SHA1 .
+      - run:
+          name: Push Docker Image
+          command: |
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker push vksssd/user-service:$CIRCLE_SHA1
+      - run:
+          name: Deploy to Kubernetes
+          command: |
+            cd user-service/k8s
+            kubectl apply -f deployment.yaml
+            kubectl apply -f service.yaml
+
+  build-order-service:
+    executor: go-executor
+    steps:
+      - checkout:
+          path: ./order-service
+      - run:
+          name: Build Order Service
+          command: |
+            cd order-service
+            go build -o main .
+      - setup_remote_docker
+      - run:
+          name: Build Docker Image
+          command: |
+            cd order-service
+            docker build -t vksssd/order-service:$CIRCLE_SHA1 .
+      - run:
+          name: Push Docker Image
+          command: |
+            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+            docker push vksssd/order-service:$CIRCLE_SHA1
+      - run:
+          name: Deploy to Kubernetes
+          command: |
+            cd order-service/k8s
+            kubectl apply -f deployment.yaml
+            kubectl apply -f service.yaml
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build-user-service
+      - build-order-service

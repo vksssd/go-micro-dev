@@ -1,0 +1,6 @@
+[submodule "user-service"]
+	path = user-service
+	url = ./user-service
+[submodule "order-service"]
+	path = order-service
+	url = ./order-service
